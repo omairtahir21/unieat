@@ -19,7 +19,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
   }
 
   Future<void> _loadUserOrders() async {
-    int userId = 1; // Replace with actual user ID
+    int userId = 1;
     final orders = await DatabaseHelper.instance.getUserOrders(userId);
 
     for (var order in orders) {

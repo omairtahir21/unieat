@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sqflite/sqflite.dart';
@@ -19,6 +20,7 @@ class _UserHomeState extends State<UserHome> {
   List<Map<String, dynamic>> userOrders = [];
 
   int _selectedIndex = 0;
+
   final TextEditingController _addressController = TextEditingController();
   List<Map<String, dynamic>> favoriteItems = [];
 
@@ -47,11 +49,7 @@ class _UserHomeState extends State<UserHome> {
     _loadFavoriteItems();
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+
 
   Widget _buildFoodGrid() {
     return foodItems.isEmpty
@@ -62,46 +60,78 @@ class _UserHomeState extends State<UserHome> {
         crossAxisCount: 2,
         crossAxisSpacing: 15,
         mainAxisSpacing: 15,
-        childAspectRatio: 0.75,
+        childAspectRatio: 0.8, // Adjust for better proportions
       ),
       itemCount: foodItems.length,
       itemBuilder: (context, index) {
         final item = foodItems[index];
         bool isFavorite = favoriteItems.any((fav) => fav['id'] == item['id']);
-        return Card(
-          color: Colors.amber.shade100,
-          elevation: 6,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          child: Column(
-            children: [
-              Expanded(
-                child: item['image'] != null && File(item['image']).existsSync()
-                    ? Image.file(File(item['image']), fit: BoxFit.cover)
-                    : const Icon(Icons.fastfood, size: 50, color: Colors.brown),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Column(
-                  children: [
-                    Text(item['name'], style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text("₹${item['price']}", style: GoogleFonts.poppins(fontSize: 16, color: Colors.green)),
-                    ElevatedButton(
-                      onPressed: () => _addToCart(item),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade700),
-                      child: const Text("+ Add to Cart", style: TextStyle(color: Colors.black)),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: isFavorite ? Colors.red : Colors.grey,
-                      ),
-                      onPressed: () => _toggleFavorite(item),
-                    ),
-                  ],
-                ),
-              ),
 
-            ],
+        return Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          elevation: 4,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Colors.blue.shade100, width: 2),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Food Image
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                  child: item['image'] != null && File(item['image']).existsSync()
+                      ? Image.file(File(item['image']),
+                      height: 100, width: double.infinity, fit: BoxFit.cover)
+                      : Image.asset('assets/placeholder.png', height: 100, width: double.infinity, fit: BoxFit.cover),
+                ),
+
+                // Food Name & Description
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['name'],
+                        style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        item['description'] ?? "Delicious Food",
+                        style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Rating & Favorite Icon
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.orange, size: 18),
+                          Text(
+                            item['rating']?.toString() ?? "4.8",
+                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorite ? Colors.red : Colors.grey,
+                        ),
+                        onPressed: () => _toggleFavorite(item),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -321,16 +351,16 @@ class _UserHomeState extends State<UserHome> {
     );
   }
 
-
+  List<Widget> get _pages => [
+    _buildFoodGrid(),
+    _buildCartPage(),
+    const Center(child: Text("Menu Page")),
+    _buildFavoritesPage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData(
-        primarySwatch: Colors.amber,
-        scaffoldBackgroundColor: Colors.yellow.shade100,
-      ),
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: Colors.amber.shade50,
         appBar: AppBar(
           title: const Text("UniEats 🍽️"),
@@ -348,31 +378,83 @@ class _UserHomeState extends State<UserHome> {
             ),
           ],
         ),
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: [
-            _buildFoodGrid(),
-            _buildFavoritesPage(),
-            _buildCartPage(),
-            const Center(child: Text("Menu Page")),
-          ],
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          backgroundColor: Colors.amber.shade700,
-          selectedItemColor: Colors.amber.shade700,
-          unselectedItemColor: Colors.black,
-          showSelectedLabels: true,
-          showUnselectedLabels: false,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-            BottomNavigationBarItem(icon: Icon(Icons.favorite), label: "Favorites"),
-            BottomNavigationBarItem(icon: Icon(Icons.shopping_cart, size: 30), label: "Orders"),
-            BottomNavigationBarItem(icon: Icon(Icons.menu), label: "Menu"),
-          ],
-        ),
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: CurvedNavigationBar(
+        backgroundColor: Colors.black,
+        color: Colors.yellow.shade100,
+        buttonBackgroundColor: Colors.yellow.shade100,
+        height: 60,
+        items: <Widget>[
+          Icon(Icons.home, size: 30, color: Colors.white),
+          Icon(Icons.person, size: 30, color: Colors.white),
+          Icon(Icons.add, size: 30, color: Colors.white),
+          Icon(Icons.article, size: 30, color: Colors.white),
+          Icon(Icons.favorite, size: 30, color: Colors.white),
+        ],
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
       ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.yellow.shade100,
+        onPressed: () {},
+        child: Icon(Icons.add, color: Colors.white),
+        shape: CircleBorder(),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Theme(
+//       data: ThemeData(
+//         primarySwatch: Colors.amber,
+//         scaffoldBackgroundColor: Colors.yellow.shade100,
+//       ),
+//       child: Scaffold(
+//         backgroundColor: Colors.amber.shade50,
+//         appBar: AppBar(
+//           title: const Text("UniEats 🍽️"),
+//           backgroundColor: Colors.amber,
+//           foregroundColor: Colors.black,
+//           actions: [
+//             IconButton(
+//               icon: const Icon(Icons.receipt_long),
+//               onPressed: () {
+//                 Navigator.push(
+//                   context,
+//                   MaterialPageRoute(builder: (context) => const OrderStatusPage()),
+//                 );
+//               },
+//             ),
+//           ],
+//         ),
+//         body: IndexedStack(
+//           index: _selectedIndex,
+//           children: [
+//
+//           ],
+//         ),
+//         bottomNavigationBar: BottomNavigationBar(
+//           backgroundColor: Colors.amber.shade700,
+//           selectedItemColor: Colors.amber.shade700,
+//           unselectedItemColor: Colors.black,
+//           showSelectedLabels: true,
+//           showUnselectedLabels: false,
+//           currentIndex: _selectedIndex,
+//           onTap: _onItemTapped,
+//           items: const [
+//             BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+//             BottomNavigationBarItem(icon: Icon(Icons.favorite), label: "Favorites"),
+//             BottomNavigationBarItem(icon: Icon(Icons.shopping_cart, size: 30), label: "Orders"),
+//             BottomNavigationBarItem(icon: Icon(Icons.menu), label: "Menu"),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
